@@ -85,13 +85,13 @@ function defineMonetageCallbacks() {
 defineMonetageCallbacks();
 
 /**
- * Inicializar o Adcash Native
+ * Inicializar o Adcash Native com a configuração original
  */
 export const initializeAdcash = () => {
   if (adcashInitialized) return;
   adcashInitialized = true;
 
-  // Adicionar o script exato do Adcash Native
+  // Adicionar o script exato do Adcash Native sem modificações
   const script = document.createElement("script");
   script.id = "adcash-native-script";
   script.setAttribute("data-cfasync", "false");
@@ -134,7 +134,7 @@ export const initializeAdcash = () => {
   noscript.appendChild(noscriptLink);
   document.body.appendChild(noscript);
 
-  console.log("Adcash Native script initialized");
+  console.log("Adcash Native script initialized with standard configuration");
 };
 
 /**
@@ -207,6 +207,7 @@ export const injectInterstitialScript = (
   if (position === 2 && interstitial2Shown) return null;
 
   // Marcar como exibido e atualizar timestamp
+  // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
   position === 1 ? (interstitial1Shown = true) : (interstitial2Shown = true);
   lastInterstitialTime = Date.now();
 
@@ -339,6 +340,7 @@ export const cleanupScripts = () => {
     "adcash-library-script",
   ];
 
+  // biome-ignore lint/complexity/noForEach: <explanation>
   scriptIds.forEach((id) => {
     const script = document.getElementById(id);
     if (script?.parentNode) {
@@ -543,6 +545,24 @@ export const initializeAllAds = () => {
   // Inicializar Adcash
   initializeAdcash();
 
+  // Monitorar o slot do Adcash para detectar quando o anúncio é exibido
+  setTimeout(() => {
+    const adcashSlot = document.getElementById("awn-z9928274");
+    if (adcashSlot) {
+      // Verificar se o slot tem conteúdo além do texto padrão "Publicidade"
+      if (
+        adcashSlot.innerHTML.length > 100 ||
+        adcashSlot.querySelector("iframe")
+      ) {
+        console.log("Adcash ad appears to be loaded");
+      } else {
+        console.log("Adcash slot exists but might not have content yet");
+      }
+    } else {
+      console.log("Adcash slot not found");
+    }
+  }, 3000);
+
   console.log("All ad scripts initialized");
 };
 
@@ -557,7 +577,9 @@ declare global {
     _iiswxcoi: () => void;
     _ngmcubed: () => void;
     _ugbxnlz: () => void;
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     aclib?: any; // Para Adcash Banner
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     [key: string]: any; // Para outros callbacks que possam ser necessários
   }
 }
