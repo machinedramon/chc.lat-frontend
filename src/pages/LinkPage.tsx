@@ -1,17 +1,32 @@
+import React, { useEffect } from "react";
+
 export default function AdCashPage() {
+  // Usando useEffect para garantir execução do script no lado do cliente
+  useEffect(() => {
+    // Garantir que aclib esteja disponível antes de executar runAutoTag
+    const checkAclib = () => {
+      if (window.aclib) {
+        window.aclib.runAutoTag({
+          zoneId: "zwva8kf59r",
+        });
+      } else {
+        // Tentar novamente após 500ms se aclib não estiver disponível
+        setTimeout(checkAclib, 500);
+      }
+    };
+
+    // Iniciar verificação após carregamento da página
+    checkAclib();
+  }, []);
+
   return (
     <div className="container">
-      {/* Step 1: Include Adcash library como script externo */}
-      <script async data-cfasync="false" src="//aclib.info/libs/aclibf.js" />
-
-      {/* Step 2: Put the tag script como script inline */}
-      <script>
-        {`
-          aclib.runAutoTag({
-              zoneId: 'zwva8kf59r',
-          });
-        `}
-      </script>
+      {/* Step 1: Include Adcash library com URL correto e ID */}
+      <script
+        id="aclib"
+        type="text/javascript"
+        src="//acscdn.com/script/aclib.js"
+      ></script>
 
       <h1>Página com Anúncios AdCash</h1>
 
@@ -28,7 +43,7 @@ export default function AdCashPage() {
       </div>
 
       {/* Primeiro anúncio */}
-      <div className="ad-container" id="ad-1" />
+      <div className="ad-container" id="ad-1"></div>
 
       {/* Segunda seção de texto */}
       <div className="content-section">
@@ -42,7 +57,7 @@ export default function AdCashPage() {
       </div>
 
       {/* Segundo anúncio */}
-      <div className="ad-container" id="ad-2" />
+      <div className="ad-container" id="ad-2"></div>
 
       {/* Terceira seção de texto */}
       <div className="content-section">
@@ -56,7 +71,7 @@ export default function AdCashPage() {
       </div>
 
       {/* Terceiro anúncio */}
-      <div className="ad-container" id="ad-3" />
+      <div className="ad-container" id="ad-3"></div>
 
       {/* Quarta seção de texto */}
       <div className="content-section">
@@ -70,7 +85,7 @@ export default function AdCashPage() {
       </div>
 
       {/* Quarto anúncio */}
-      <div className="ad-container" id="ad-4" />
+      <div className="ad-container" id="ad-4"></div>
 
       <style>
         {`
