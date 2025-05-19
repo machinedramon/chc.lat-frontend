@@ -7,7 +7,7 @@ import { FaTelegramPlane } from "react-icons/fa";
 
 const UnderConstruction: React.FC = () => {
   return (
-    <div className="relative flex h-full flex-col items-center justify-center bg-[#3b1e0e] overflow-hidden px-3 sm:px-4">
+    <div className="relative flex h-dvh flex-col items-center justify-center bg-[#3b1e0e] overflow-hidden px-3 sm:px-4">
       {/* Background light effects */}
       <div className="absolute top-[15%] left-[20%] h-[300px] w-[300px] rounded-full bg-[#5a3520] opacity-20 blur-lg" />
       <div className="absolute bottom-[20%] right-[15%] h-[250px] w-[250px] rounded-full bg-[#6b4530] opacity-15 blur-lg" />

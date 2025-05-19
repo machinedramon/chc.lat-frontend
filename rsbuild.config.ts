@@ -29,12 +29,19 @@ export default defineConfig({
                 if (typeof native_request !== 'undefined' && typeof setupAd !== 'undefined') {
                   // Lista de IDs de elementos para carregar anúncios
                   var adContainers = [
-                    'awn-z9952262-1',
-                    'awn-z9952262-2',
-                    'awn-z9952262-3',
-                    'awn-z9952262-4',
-                    'awn-z9952262-5',
-                    'awn-z9952262-6'
+                    'awn-z9952262-1',  // Cabeçalho
+                    'awn-z9952262-2',  // Seção 1
+                    'awn-z9952262-3',  // Seção 2
+                    'awn-z9952262-4',  // Seção 3
+                    'awn-z9952262-5',  // Seção 4
+                    'awn-z9952262-6',  // Seção 5
+                    'awn-z9952262-7',  // Seção 6
+                    'awn-z9952262-8',  // Seção 7
+                    'awn-z9952262-9',  // Seção 8
+                    'awn-z9952262-10', // Seção 9
+                    'awn-z9952262-11', // Seção 10
+                    'awn-z9952262-12', // Seção final com link
+                    'awn-z9952262-13'  // Rodapé
                   ];
                   
                   // Função para carregar anúncio em um container específico
