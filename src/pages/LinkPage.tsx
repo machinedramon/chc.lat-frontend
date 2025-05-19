@@ -15,7 +15,7 @@ export default function ChocolateAdPage() {
   // Estados principais
   const [unlocked, setUnlocked] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
-  const [totalSections, setTotalSections] = useState(12); // Ajustado (incluindo footer)
+  const [totalSections, setTotalSections] = useState(13); // Ajustado para 13 seções totais
   const [tabActive, setTabActive] = useState(true);
   const [showCopiedNotification, setShowCopiedNotification] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -85,6 +85,10 @@ export default function ChocolateAdPage() {
     "#ff9a76", // Laranja/Pêssego
     "#ff9a76",
   ];
+
+  // Define corretamente o número total de níveis
+  // Temos 10 níveis no total (do snap 1 ao 10)
+  const totalLevels = 10;
 
   // Bloquear ou desbloquear scroll com base na seção atual
   useEffect(() => {
@@ -193,6 +197,11 @@ export default function ChocolateAdPage() {
 
     // Não aplicamos timer ao primeiro snap e ao último snap (footer)
     if (currentSection === 0 || currentSection === totalSections - 1) {
+      return;
+    }
+
+    // Não aplicamos timer à página de link (penúltima)
+    if (currentSection === totalSections - 2) {
       return;
     }
 
@@ -378,7 +387,7 @@ export default function ChocolateAdPage() {
     const completedSections = sectionCompleted
       .slice(1, totalSections - 2)
       .filter(Boolean).length;
-    const totalIntermediateSections = totalSections - 3; // Excluindo primeira, última e penúltima
+    const totalIntermediateSections = totalLevels; // Usamos o total de níveis definido
     return Math.floor((completedSections / totalIntermediateSections) * 100);
   };
 
@@ -413,9 +422,6 @@ export default function ChocolateAdPage() {
       }
     }
   };
-
-  // Número total de níveis intermediários (corrigido para incluir todos)
-  const totalIntermediateLevels = totalSections - 3;
 
   return (
     <div
@@ -610,7 +616,7 @@ export default function ChocolateAdPage() {
       </div>
 
       {/* Gera seções dinamicamente - cada uma com anúncio e frase */}
-      {Array.from({ length: totalSections - 2 }).map((_, index) => {
+      {Array.from({ length: totalSections - 3 }).map((_, index) => {
         const sectionIndex = index + 1; // começamos do 1 porque já temos a seção 0
         // IDs CORRIGIDOS - cada seção com ID único de 2 a 11
         const adId = `awn-z9952262-${sectionIndex + 1}`; // +1 porque já usamos o ID 1 no cabeçalho
@@ -651,7 +657,7 @@ export default function ChocolateAdPage() {
                   />
                 </div>
                 <span className="text-xs">
-                  Nível {sectionIndex}/{totalIntermediateLevels}
+                  Nível {sectionIndex}/{totalLevels}
                 </span>
               </div>
 
