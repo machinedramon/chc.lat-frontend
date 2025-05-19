@@ -4,7 +4,7 @@ import UnderConstruction from "./pages/UnderConstruction";
 
 const App = () => {
   return (
-    <div className="h-dvh bg-[green]">
+    <div className="h-dvh">
       {/* <UnderConstruction /> */}
       <LinkPage />
     </div>
