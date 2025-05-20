@@ -56,6 +56,7 @@ export default function ChocolateAdPage() {
   const sectionRefs = useRef([]);
   const confettiRef = useRef(null);
   const timerIntervalRef = useRef(null);
+  const adLoadedRef = useRef(Array(totalSections).fill(false));
 
   // Destino final (normalmente viria de um parâmetro de URL)
   const destinationUrl = "https://destino.exemplo.com";
@@ -141,6 +142,51 @@ export default function ChocolateAdPage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
+
+  // Função para acionar o carregamento de um anúncio específico
+  const loadAd = (index) => {
+    if (adLoadedRef.current[index]) return; // Não carrega novamente se já foi carregado
+
+    if (window.native_request && window.setupAd && window.zoneNativeSett) {
+      try {
+        const containerId = `awn-z9952262-${index + 1}`;
+        const container = document.getElementById(containerId);
+
+        if (container) {
+          // Marcar anúncio como carregado
+          const newAdLoaded = [...adLoadedRef.current];
+          newAdLoaded[index] = true;
+          adLoadedRef.current = newAdLoaded;
+
+          // Criar nova solicitação de anúncio
+          const newZone = new window.native_request(
+            "//" + window.zoneNativeSett.baseUrl + "?nwpsv=1&",
+            window.zoneNativeSett.r[0]
+          );
+
+          newZone.build();
+          newZone.jsonp("callback", function (e) {
+            window.setupAd(containerId, e);
+          });
+
+          console.log(`Ad request sent for container ${containerId}`);
+        }
+      } catch (error) {
+        console.error(`Error loading ad in section ${index}:`, error);
+      }
+    } else {
+      console.log("Ad scripts not loaded yet, retrying in 500ms");
+      setTimeout(() => loadAd(index), 500);
+    }
+  };
+
+  // Efeito para acionar o carregamento de anúncios quando a seção muda
+  useEffect(() => {
+    // Carregar anúncio para a seção atual
+    setTimeout(() => {
+      loadAd(currentSection);
+    }, 300);
+  }, [currentSection]);
 
   // Configura o temporizador para cada seção
   useEffect(() => {
@@ -251,7 +297,7 @@ export default function ChocolateAdPage() {
             return Math.random() * (max - min) + min;
           }
 
-          const interval = setInterval(() => {
+          const interval = setInterval(function () {
             const timeLeft = animationEnd - Date.now();
 
             if (timeLeft <= 0) {
@@ -477,6 +523,14 @@ export default function ChocolateAdPage() {
         .progress-complete {
           animation: progressComplete 0.5s ease-out;
         }
+
+        /* Estilos personalizados para containers de anúncios */
+        .ad-container {
+          min-height: 250px;
+          margin: 1rem auto;
+          width: 100%;
+          max-width: 320px;
+        }
       `}</style>
 
       {/* Notificação de link copiado */}
@@ -490,6 +544,20 @@ export default function ChocolateAdPage() {
           Link copiado!
         </motion.div>
       )}
+
+      {/* Todos os containers de anúncios - sempre presentes no DOM */}
+      <div
+        className="fixed opacity-0"
+        style={{ pointerEvents: "none", zIndex: -1 }}
+      >
+        {Array.from({ length: totalSections }).map((_, index) => (
+          <div
+            key={`hidden-ad-${index + 1}`}
+            id={`awn-z9952262-${index + 1}`}
+            className="ad-container"
+          ></div>
+        ))}
+      </div>
 
       {/* Indicadores de navegação (pontos) */}
       <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-40 flex flex-col items-center space-y-1">
@@ -527,7 +595,7 @@ export default function ChocolateAdPage() {
         >
           {/* SEÇÃO INICIAL */}
           {currentSection === 0 && (
-            <div className="h-dvh w-full flex flex-col items-center justify-center p-4 section">
+            <div className="h-full w-full flex flex-col items-center justify-center p-4 section">
               <div className="max-w-md mx-auto text-center">
                 {/* Barra de progresso incorporada ao design */}
                 <motion.div
@@ -584,6 +652,11 @@ export default function ChocolateAdPage() {
                 >
                   Aguarde alguns segundos em cada etapa
                 </motion.p>
+
+                {/* Container de anúncio visível */}
+                <div className="ad-container" style={{ visibility: "visible" }}>
+                  <div id={`awn-z9952262-1`}></div>
+                </div>
 
                 {/* Botão centralizado com animação */}
                 <motion.div
@@ -697,17 +770,19 @@ export default function ChocolateAdPage() {
                   {stepPhrases[currentSection % stepPhrases.length]}
                 </motion.p>
 
-                {/* CORREÇÃO: Container para anúncio diretamente embutido na seção atual */}
+                {/* Container de anúncio para a seção atual */}
                 <motion.div
-                  className="my-4 ad-container flex justify-center items-center"
+                  className="my-4 mx-auto"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.2, duration: 0.3 }}
                 >
                   <div
-                    id={`awn-z9952262-${currentSection + 1}`}
-                    className="w-full min-h-[250px] max-w-[320px] mx-auto"
-                  ></div>
+                    className="ad-container"
+                    style={{ visibility: "visible" }}
+                  >
+                    <div id={`awn-z9952262-${currentSection + 1}`}></div>
+                  </div>
                 </motion.div>
 
                 {/* Barra de progresso para a seção atual */}
@@ -825,6 +900,21 @@ export default function ChocolateAdPage() {
                 >
                   {unlocked ? "Link Desbloqueado!" : "Quase lá..."}
                 </motion.h2>
+
+                {/* Container de anúncio para a seção de link */}
+                <motion.div
+                  className="my-4 mx-auto"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <div
+                    className="ad-container"
+                    style={{ visibility: "visible" }}
+                  >
+                    <div id={`awn-z9952262-${totalSections - 1}`}></div>
+                  </div>
+                </motion.div>
 
                 {unlocked ? (
                   <motion.div
@@ -985,6 +1075,21 @@ export default function ChocolateAdPage() {
                   <p className="mt-2 text-sm text-[#e1d6b9]/60">
                     Encurtador com monetização
                   </p>
+                </motion.div>
+
+                {/* Container de anúncio para o rodapé */}
+                <motion.div
+                  className="my-4 mx-auto"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <div
+                    className="ad-container"
+                    style={{ visibility: "visible" }}
+                  >
+                    <div id={`awn-z9952262-${totalSections}`}></div>
+                  </div>
                 </motion.div>
 
                 {/* Estatísticas simplificadas */}
