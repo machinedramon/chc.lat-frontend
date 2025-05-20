@@ -1050,7 +1050,6 @@ export default function ChocolateAdPage() {
                         <ChevronUp size={24} className="text-[#e1d6b9]" />
                       </motion.button>
                     </div>
-                    Continue rolando para acessar seu link
                   </div>
                 </div>
               </div>

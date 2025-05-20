@@ -25,7 +25,18 @@ export default defineConfig({
         },
         head: true,
       },
-      // Script do Adsterra Banner para 300x250
+
+      // SCRIPT POPUNDER (antes de </head>)
+      {
+        tag: "script",
+        attrs: {
+          type: "text/javascript",
+          src: "//pl26698008.profitableratecpm.com/68/c9/f9/68c9f9785ff63202669d05f31cd10598.js",
+        },
+        head: true, // Coloca no <head>
+      },
+
+      // Script do Adsterra Banner - apenas o necessário
       {
         tag: "script",
         attrs: {
@@ -44,24 +55,16 @@ export default defineConfig({
         head: false,
         append: true, // Append to body instead of head
       },
-      // Script do Adsterra Banner para 320x50
+
+      // SOCIAL BAR (antes de </body>)
       {
         tag: "script",
         attrs: {
           type: "text/javascript",
+          src: "//pl26698026.profitableratecpm.com/1a/27/6a/1a276a2539c6de9bdcb241acca9b60c3.js",
         },
-        children: `
-          var atOptions = { 
-            'key' : '732cb0029d49dc889b19b61d2ccc0786', 
-            'format' : 'iframe', 
-            'height' : 50, 
-            'width' : 320, 
-            'params' : {} 
-          };
-          document.write('<scr' + 'ipt type="text/javascript" src="//www.highperformanceformat.com/732cb0029d49dc889b19b61d2ccc0786/invoke.js"></scr' + 'ipt>');
-        `,
         head: false,
-        append: true, // Append to body instead of head
+        append: true, // Garante que fique no final do <body>
       },
     ],
   },
