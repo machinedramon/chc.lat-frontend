@@ -4,21 +4,27 @@ import {
   Lock,
   ExternalLink,
   ChevronDown,
+  ChevronUp,
   Copy,
   Share2,
   Award,
   Gift,
   Check,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ChocolateAdPage() {
   // Estados principais
   const [unlocked, setUnlocked] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
-  const [totalSections, setTotalSections] = useState(13); // Ajustado para 13 seções totais
+  const [totalSections, setTotalSections] = useState(13); // Total de 13 seções (1 inicial + 10 níveis + 1 link + 1 footer)
   const [tabActive, setTabActive] = useState(true);
   const [showCopiedNotification, setShowCopiedNotification] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  const [direction, setDirection] = useState(null); // 'up' ou 'down'
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Estado para controlar quanto tempo o usuário permaneceu em cada seção
   const SECTION_TIMER = 3; // 3 segundos por seção
@@ -28,6 +34,7 @@ export default function ChocolateAdPage() {
   const [sectionCompleted, setSectionCompleted] = useState(
     Array(totalSections).fill(false)
   );
+
   // Primeiro snap (apresentação) e último snap (footer) já começam completos
   useEffect(() => {
     const initialCompleted = [...sectionCompleted];
@@ -44,12 +51,9 @@ export default function ChocolateAdPage() {
     startTime: Date.now(),
   });
 
-  // Estado para bloquear scroll
-  const [isScrollLocked, setIsScrollLocked] = useState(false);
-
   // Referências
-  const mainContainerRef = useRef(null);
-  const sectionsRef = useRef([]);
+  const pageRef = useRef(null);
+  const sectionRefs = useRef([]);
   const confettiRef = useRef(null);
   const timerIntervalRef = useRef(null);
 
@@ -86,68 +90,26 @@ export default function ChocolateAdPage() {
     "#ff9a76",
   ];
 
-  // Define corretamente o número total de níveis
-  // Temos 10 níveis no total (do snap 1 ao 10)
+  // Define corretamente o número total de níveis - exatamente 10 níveis
   const totalLevels = 10;
 
-  // Bloquear ou desbloquear scroll com base na seção atual
-  useEffect(() => {
-    // Se a seção atual está completa ou é a primeira/última seção, permitir scroll
-    if (
-      sectionCompleted[currentSection] ||
-      currentSection === 0 ||
-      currentSection === totalSections - 1 ||
-      (unlocked && currentSection === totalSections - 2)
-    ) {
-      setIsScrollLocked(false);
-    } else {
-      // Caso contrário, bloquear scroll até que o timer seja concluído
-      setIsScrollLocked(true);
-    }
-  }, [currentSection, sectionCompleted, unlocked]);
-
-  // Aplicar bloqueio de scroll quando necessário
-  useEffect(() => {
-    const container = mainContainerRef.current;
-
-    // Função para impedir scroll
-    const preventScroll = (e) => {
-      if (isScrollLocked) {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-      }
-    };
-
-    // Funções para impedir swipe/touch scroll no mobile
-    const preventTouchMove = (e) => {
-      if (isScrollLocked) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    if (container) {
-      if (isScrollLocked) {
-        container.style.overflow = "hidden";
-        container.addEventListener("wheel", preventScroll, { passive: false });
-        container.addEventListener("touchmove", preventTouchMove, {
-          passive: false,
-        });
-      } else {
-        container.style.overflow = "auto";
-        container.removeEventListener("wheel", preventScroll);
-        container.removeEventListener("touchmove", preventTouchMove);
-      }
-    }
-
-    return () => {
-      if (container) {
-        container.removeEventListener("wheel", preventScroll);
-        container.removeEventListener("touchmove", preventTouchMove);
-      }
-    };
-  }, [isScrollLocked]);
+  // Variantes de animação
+  const pageVariants = {
+    initial: (direction) => ({
+      y: direction === "up" ? "-100vh" : "100vh",
+      opacity: 0,
+    }),
+    animate: {
+      y: 0,
+      opacity: 1,
+      transition: { type: "tween", duration: 0.3, ease: "easeOut" },
+    },
+    exit: (direction) => ({
+      y: direction === "up" ? "100vh" : "-100vh",
+      opacity: 0,
+      transition: { type: "tween", duration: 0.3, ease: "easeIn" },
+    }),
+  };
 
   // Carrega a biblioteca de confetti
   useEffect(() => {
@@ -182,7 +144,6 @@ export default function ChocolateAdPage() {
 
   // Configura o temporizador para cada seção
   useEffect(() => {
-    // Limpa o intervalo existente
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
     }
@@ -213,16 +174,13 @@ export default function ChocolateAdPage() {
       timerIntervalRef.current = setInterval(() => {
         setCurrentSectionTime((prev) => {
           if (prev <= 1) {
-            // Se o timer chegou a zero, limpa o intervalo e marca a seção como concluída
+            // Timer concluído
             clearInterval(timerIntervalRef.current);
 
-            // Atualiza o array de seções completadas
+            // Marca a seção como completada
             const newCompletedSections = [...sectionCompleted];
             newCompletedSections[currentSection] = true;
             setSectionCompleted(newCompletedSections);
-
-            // Desbloquear scroll quando o timer termina
-            setIsScrollLocked(false);
 
             return 0;
           }
@@ -238,49 +196,6 @@ export default function ChocolateAdPage() {
     };
   }, [currentSection, tabActive, sectionCompleted, unlocked]);
 
-  // Configura o rastreamento de seções
-  useEffect(() => {
-    if (mainContainerRef.current) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              const sectionIndex = parseInt(entry.target.dataset.index);
-
-              // Atualiza a seção atual
-              setCurrentSection(sectionIndex);
-
-              // Incrementa métricas apenas uma vez por seção
-              setMetrics((prev) => ({
-                ...prev,
-                viewedSections: Math.max(prev.viewedSections, sectionIndex + 1),
-              }));
-            }
-          });
-        },
-        {
-          threshold: 0.7, // 70% da seção deve estar visível (aumentado para melhor precisão)
-          rootMargin: "-5% 0px", // Margem menor para detecção mais precisa
-        }
-      );
-
-      // Observa cada seção
-      sectionsRef.current.forEach((section) => {
-        if (section) {
-          observer.observe(section);
-        }
-      });
-
-      return () => {
-        sectionsRef.current.forEach((section) => {
-          if (section) {
-            observer.unobserve(section);
-          }
-        });
-      };
-    }
-  }, []);
-
   // Atualiza o tempo gasto na página
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -295,6 +210,18 @@ export default function ChocolateAdPage() {
     return () => clearInterval(intervalId);
   }, [tabActive]);
 
+  // Configura o comportamento de toque
+  useEffect(() => {
+    // Evita comportamentos de scroll padrão
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    };
+  }, []);
+
   // Verifica se todas as condições para desbloquear o link foram atendidas
   useEffect(() => {
     // Verifica se o usuário chegou na penúltima seção e completou todas as seções anteriores
@@ -306,7 +233,6 @@ export default function ChocolateAdPage() {
 
       if (allPreviousSectionsCompleted && !unlocked) {
         setUnlocked(true);
-        setIsScrollLocked(false); // Garantir que o scroll está liberado
         setShowConfetti(true);
 
         // Dispara o confetti
@@ -325,7 +251,7 @@ export default function ChocolateAdPage() {
             return Math.random() * (max - min) + min;
           }
 
-          const interval = setInterval(function () {
+          const interval = setInterval(() => {
             const timeLeft = animationEnd - Date.now();
 
             if (timeLeft <= 0) {
@@ -387,8 +313,7 @@ export default function ChocolateAdPage() {
     const completedSections = sectionCompleted
       .slice(1, totalSections - 2)
       .filter(Boolean).length;
-    const totalIntermediateSections = totalLevels; // Usamos o total de níveis definido
-    return Math.floor((completedSections / totalIntermediateSections) * 100);
+    return Math.floor((completedSections / totalLevels) * 100);
   };
 
   // Retorna a cor do nível atual para gamificação
@@ -396,58 +321,117 @@ export default function ChocolateAdPage() {
     return levelColors[Math.min(currentSection, levelColors.length - 1)];
   };
 
-  // Função melhorada para scroll com suporte otimizado para mobile
-  const scrollToNextSection = () => {
-    // Só permite avançar se o tempo mínimo na seção atual foi cumprido
-    if (sectionCompleted[currentSection]) {
-      const nextSection = sectionsRef.current[currentSection + 1];
-      if (nextSection) {
-        // Opção 1: scrollIntoView modificado para funcionamento mais consistente
-        setTimeout(() => {
-          try {
-            nextSection.scrollIntoView({
-              behavior: "smooth",
-              block: "start",
-              inline: "nearest",
-            });
-          } catch (err) {
-            // Fallback em caso de falha do scrollIntoView
-            const topPos = nextSection.offsetTop;
-            window.scrollTo({
-              top: topPos,
-              behavior: "smooth",
-            });
-          }
-        }, 50); // Pequeno atraso para melhorar a confiabilidade no mobile
+  // Funções para navegação entre seções com animação
+  const navigateTo = (targetIndex) => {
+    // Evita navegação durante animação
+    if (isNavigating) return;
+
+    // Verifica se podemos navegar para a próxima seção
+    const canNavigate =
+      // Permitir navegar para trás sempre
+      targetIndex < currentSection ||
+      // Permitir navegar para frente apenas se a seção atual estiver completa
+      sectionCompleted[currentSection] ||
+      // Exceções para primeira e última seção
+      currentSection === 0 ||
+      currentSection === totalSections - 1 ||
+      // Exceção para a seção de link desbloqueada
+      (unlocked && currentSection === totalSections - 2);
+
+    if (!canNavigate) return;
+
+    // Define a direção da animação
+    setDirection(targetIndex > currentSection ? "down" : "up");
+
+    // Inicia a animação
+    setIsNavigating(true);
+
+    // Atualiza a seção atual após um pequeno delay para a animação
+    setTimeout(() => {
+      setCurrentSection(targetIndex);
+      setIsNavigating(false);
+
+      // Atualiza métricas
+      setMetrics((prev) => ({
+        ...prev,
+        viewedSections: Math.max(prev.viewedSections, targetIndex + 1),
+      }));
+    }, 150); // Delay menor para animação mais rápida
+  };
+
+  const nextSection = () => {
+    if (currentSection < totalSections - 1) {
+      navigateTo(currentSection + 1);
+    }
+  };
+
+  const prevSection = () => {
+    if (currentSection > 0) {
+      navigateTo(currentSection - 1);
+    }
+  };
+
+  // Manipuladores de eventos para gestos de toque
+  const handleTouchStart = (e) => {
+    setTouchStart(e.touches[0].clientY);
+  };
+
+  const handleTouchMove = (e) => {
+    // Impede comportamento padrão para evitar scroll nativo
+    e.preventDefault();
+  };
+
+  const handleTouchEnd = (e) => {
+    setTouchEnd(e.changedTouches[0].clientY);
+
+    const distance = touchStart - touchEnd;
+
+    // Detecta a direção do swipe (mínimo de 70px para considerar um swipe)
+    if (Math.abs(distance) > 70) {
+      if (distance > 0) {
+        // Swipe para cima - próxima seção
+        nextSection();
+      } else {
+        // Swipe para baixo - seção anterior
+        prevSection();
       }
+    }
+  };
+
+  // Gerenciador de roda do mouse
+  const handleWheel = (e) => {
+    // Pequeno debounce para evitar ativações múltiplas
+    if (pageRef.current && !pageRef.current.wheelTimeout) {
+      pageRef.current.wheelTimeout = setTimeout(() => {
+        if (e.deltaY > 0) {
+          // Scrolling para baixo
+          nextSection();
+        } else {
+          // Scrolling para cima
+          prevSection();
+        }
+        pageRef.current.wheelTimeout = null;
+      }, 50);
     }
   };
 
   return (
     <div
-      ref={mainContainerRef}
-      className="h-full w-full overflow-y-auto overflow-x-hidden bg-[#2c1810] text-[#e1d6b9] relative"
-      style={{
-        scrollSnapType: "y mandatory",
-        scrollBehavior: "smooth",
-        scrollbarWidth: "thin",
-        scrollbarColor: "#8b5a2b #3b1e0e",
-      }}
+      ref={pageRef}
+      className="fixed inset-0 bg-[#2c1810] text-[#e1d6b9] overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onWheel={handleWheel}
     >
-      {/* Estilo global */}
       <style jsx global>{`
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-          background: #3b1e0e;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: #8b5a2b;
-          border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: #cd7f32;
+        body {
+          overflow: hidden;
+          touch-action: none;
+          overscroll-behavior: none;
+          position: fixed;
+          width: 100%;
+          height: 100%;
         }
 
         @keyframes pulse {
@@ -478,41 +462,6 @@ export default function ChocolateAdPage() {
           animation: completedPulse 2s ease-in-out infinite;
         }
 
-        @keyframes shake {
-          0%,
-          100% {
-            transform: translateX(0);
-          }
-          25% {
-            transform: translateX(-5px);
-          }
-          50% {
-            transform: translateX(5px);
-          }
-          75% {
-            transform: translateX(-5px);
-          }
-        }
-
-        .shake {
-          animation: shake 0.5s ease-in-out;
-        }
-
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .fade-in-up {
-          animation: fadeInUp 0.5s ease-out forwards;
-        }
-
         @keyframes progressComplete {
           0% {
             transform: scale(1);
@@ -528,480 +477,601 @@ export default function ChocolateAdPage() {
         .progress-complete {
           animation: progressComplete 0.5s ease-out;
         }
-
-        /* Estilos específicos para mobile */
-        @media (max-width: 768px) {
-          .section {
-            padding-top: 1.5rem;
-            padding-bottom: 1.5rem;
-          }
-          .ad-container {
-            margin: 0.75rem 0;
-          }
-          body {
-            touch-action: none; /* Impede comportamentos padrão de toque em mobile */
-          }
-        }
       `}</style>
-
-      {/* Overlay para bloquear scroll/interação */}
-      {isScrollLocked && (
-        <div
-          className="fixed inset-0 z-30 bg-transparent cursor-not-allowed"
-          onClick={(e) => e.preventDefault()}
-          onTouchMove={(e) => e.preventDefault()}
-        />
-      )}
 
       {/* Notificação de link copiado */}
       {showCopiedNotification && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-[#8b5a2b] text-white px-4 py-2 rounded-full shadow-lg z-50">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-[#8b5a2b] text-white px-4 py-2 rounded-full shadow-lg z-50"
+        >
           Link copiado!
-        </div>
+        </motion.div>
       )}
 
-      {/* Cabeçalho com logo - primeira "snap section" */}
-      <div
-        ref={(el) => (sectionsRef.current[0] = el)}
-        data-index={0}
-        className="h-dvh flex flex-col items-center justify-center p-4 section"
-        style={{ scrollSnapAlign: "start" }}
-      >
-        <div className="max-w-md mx-auto text-center">
-          {/* Barra de progresso incorporada ao design */}
-          <div className="w-full max-w-xs mx-auto mb-4 bg-[#3b1e0e] rounded-full h-3 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ease-out ${
-                calculateProgress() === 100
-                  ? "progress-complete bg-green-400"
-                  : ""
-              }`}
-              style={{
-                width: `${calculateProgress()}%`,
-                backgroundColor:
-                  calculateProgress() === 100
-                    ? "#4ade80"
-                    : getCurrentLevelColor(),
-              }}
-            ></div>
-          </div>
-
-          <div className="inline-flex items-center justify-center mb-4">
-            <img
-              src="https://i.ibb.co/KpF7CjKN/Chat-GPT-Image-10-de-mai-de-2025-00-22-43.png"
-              alt="Chocolate bar"
-              className="h-16 w-16 mr-2"
-            />
-            <span className="text-2xl font-bold ml-2">chc.lat</span>
-          </div>
-
-          <h1 className="mt-4 text-xl font-light text-center text-[#e1d6b9]/80">
-            Continue rolando para acessar seu link
-          </h1>
-
-          <p className="mt-2 text-sm text-[#e1d6b9]/60">
-            Aguarde alguns segundos em cada etapa
-          </p>
-
-          {/* Botão centralizado com animação de bounce */}
-          <div className="flex justify-center w-full mt-10">
-            <button
-              onClick={scrollToNextSection}
-              className="mt-4 animate-bounce flex items-center justify-center p-3 rounded-full border border-[#cd7f32]/30 bg-[#cd7f32]/20 hover:bg-[#cd7f32]/30 cursor-pointer transition-all"
-            >
-              <ChevronDown size={24} className="text-[#cd7f32]" />
-            </button>
-          </div>
-        </div>
+      {/* Indicadores de navegação (pontos) */}
+      <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-40 flex flex-col items-center space-y-1">
+        {Array.from({ length: totalSections }).map((_, index) => (
+          <button
+            key={index}
+            onClick={() => navigateTo(index)}
+            className={`w-2 h-2 rounded-full transition-all duration-200 ${
+              currentSection === index
+                ? "bg-[#cd7f32] w-3 h-3"
+                : sectionCompleted[index]
+                ? "bg-[#e1d6b9]/50 hover:bg-[#e1d6b9]/70"
+                : "bg-[#e1d6b9]/20"
+            }`}
+            disabled={
+              !sectionCompleted[index] &&
+              index !== currentSection &&
+              index > currentSection
+            }
+            aria-label={`Ir para seção ${index + 1}`}
+          />
+        ))}
       </div>
 
-      {/* Gera seções dinamicamente - cada uma com anúncio e frase */}
-      {Array.from({ length: totalSections - 3 }).map((_, index) => {
-        const sectionIndex = index + 1; // começamos do 1 porque já temos a seção 0
-        // IDs CORRIGIDOS - cada seção com ID único de 2 a 11
-        const adId = `awn-z9952262-${sectionIndex + 1}`; // +1 porque já usamos o ID 1 no cabeçalho
-
-        return (
-          <div
-            key={sectionIndex}
-            ref={(el) => (sectionsRef.current[sectionIndex] = el)}
-            data-index={sectionIndex}
-            className="h-dvh flex flex-col items-center justify-center p-4 section relative"
-            style={{
-              scrollSnapAlign: "start",
-              backgroundColor:
-                sectionIndex === currentSection
-                  ? `${getCurrentLevelColor()}10`
-                  : "transparent",
-              transition: "background-color 0.5s ease",
-            }}
-          >
-            {/* Temporizador da seção atual e nível incorporados ao design */}
-            <div className="w-full max-w-xs mx-auto flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center 
-                    ${
-                      sectionCompleted[sectionIndex]
-                        ? "bg-green-400/20 completed-pulse"
-                        : "bg-[#cd7f32]/20"
-                    }`}
+      {/* Container principal com AnimatePresence para transições */}
+      <AnimatePresence initial={false} custom={direction} mode="wait">
+        <motion.div
+          key={currentSection}
+          custom={direction}
+          variants={pageVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="h-full w-full flex items-center justify-center relative"
+        >
+          {/* SEÇÃO INICIAL */}
+          {currentSection === 0 && (
+            <div className="h-dvh w-full flex flex-col items-center justify-center p-4 section">
+              <div className="max-w-md mx-auto text-center">
+                {/* Barra de progresso incorporada ao design */}
+                <motion.div
+                  className="w-full max-w-xs mx-auto mb-4 bg-[#3b1e0e] rounded-full h-3 overflow-hidden"
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
                 >
-                  <Award
-                    size={14}
-                    className={
-                      sectionCompleted[sectionIndex]
-                        ? "text-green-400"
-                        : "text-[#cd7f32]"
-                    }
-                  />
-                </div>
-                <span className="text-xs">
-                  Nível {sectionIndex}/{totalLevels}
-                </span>
-              </div>
-
-              <div
-                className={`flex items-center bg-[#3b1e0e] px-3 py-1 rounded-full 
-                  ${
-                    sectionCompleted[sectionIndex]
-                      ? "border border-green-400/30"
-                      : ""
-                  }`}
-              >
-                {sectionCompleted[sectionIndex] ? (
-                  <>
-                    <Check size={14} className="text-green-400 mr-1" />
-                    <span className="text-xs text-green-400">Completo</span>
-                  </>
-                ) : (
-                  <>
-                    <Clock size={14} className="text-[#cd7f32] mr-1" />
-                    <span className="text-xs font-mono">
-                      {currentSectionTime}s
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Número de nível - elemento de gamificação */}
-            <div
-              className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-4
-                ${
-                  sectionCompleted[sectionIndex]
-                    ? "border-2 border-green-400 completed-pulse"
-                    : "border-2 subtle-pulse"
-                }`}
-              style={{
-                backgroundColor: sectionCompleted[sectionIndex]
-                  ? "#00800020"
-                  : `${getCurrentLevelColor()}20`,
-                borderColor: sectionCompleted[sectionIndex]
-                  ? "#4ade80"
-                  : getCurrentLevelColor(),
-              }}
-            >
-              <span
-                className={`text-base font-bold ${
-                  sectionCompleted[sectionIndex] ? "text-green-400" : ""
-                }`}
-              >
-                {sectionIndex}
-              </span>
-            </div>
-
-            <div className="max-w-lg mx-auto w-full text-center">
-              <p className="text-center text-[#e1d6b9]/80 italic mb-4 text-lg">
-                {stepPhrases[sectionIndex % stepPhrases.length]}
-              </p>
-
-              {/* ANÚNCIO EM CADA SEÇÃO COM ID ÚNICO */}
-              <div className="my-4 ad-container">
-                <div
-                  id={adId}
-                  className="w-full min-h-[250px] max-w-[320px] mx-auto"
-                ></div>
-              </div>
-
-              {/* Barra de progresso para a seção atual - sempre visível */}
-              <div className="w-full max-w-xs mx-auto mb-4 bg-[#3b1e0e] rounded-full h-3 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ease-out 
-                    ${
-                      sectionCompleted[sectionIndex]
-                        ? "bg-green-400 progress-complete"
+                  <motion.div
+                    className={`h-full rounded-full ${
+                      calculateProgress() === 100
+                        ? "progress-complete bg-green-400"
                         : ""
                     }`}
-                  style={{
-                    width: sectionCompleted[sectionIndex]
-                      ? "100%"
-                      : `${100 - (currentSectionTime / SECTION_TIMER) * 100}%`,
-                    backgroundColor: sectionCompleted[sectionIndex]
-                      ? "#4ade80"
-                      : getCurrentLevelColor(),
-                  }}
-                ></div>
-              </div>
-
-              <div className="flex justify-center w-full">
-                <button
-                  onClick={scrollToNextSection}
-                  disabled={!sectionCompleted[sectionIndex]}
-                  className={`mt-4 flex items-center justify-center p-3 rounded-full border transition-all ${
-                    sectionCompleted[sectionIndex]
-                      ? "bg-[#cd7f32]/20 hover:bg-[#cd7f32]/30 border-[#cd7f32]/30 cursor-pointer"
-                      : "bg-[#3b1e0e]/50 border-[#3b1e0e]/30 cursor-not-allowed"
-                  }`}
-                >
-                  <ChevronDown
-                    size={24}
-                    className={
-                      sectionCompleted[sectionIndex]
-                        ? "text-[#cd7f32]"
-                        : "text-[#e1d6b9]/30"
-                    }
+                    initial={{ width: `${calculateProgress()}%` }}
+                    animate={{
+                      width: `${calculateProgress()}%`,
+                      backgroundColor:
+                        calculateProgress() === 100
+                          ? "#4ade80"
+                          : getCurrentLevelColor(),
+                    }}
+                    transition={{ duration: 0.5 }}
                   />
-                </button>
+                </motion.div>
+
+                <motion.div
+                  className="inline-flex items-center justify-center mb-4"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <img
+                    src="https://i.ibb.co/KpF7CjKN/Chat-GPT-Image-10-de-mai-de-2025-00-22-43.png"
+                    alt="Chocolate bar"
+                    className="h-16 w-16 mr-2"
+                  />
+                  <span className="text-2xl font-bold ml-2">chc.lat</span>
+                </motion.div>
+
+                <motion.h1
+                  className="mt-4 text-xl font-light text-center text-[#e1d6b9]/80"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                >
+                  Continue rolando para acessar seu link
+                </motion.h1>
+
+                <motion.p
+                  className="mt-2 text-sm text-[#e1d6b9]/60"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  Aguarde alguns segundos em cada etapa
+                </motion.p>
+
+                {/* Botão centralizado com animação */}
+                <motion.div
+                  className="flex justify-center w-full mt-10"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.3 }}
+                >
+                  <motion.button
+                    onClick={nextSection}
+                    className="mt-4 flex items-center justify-center p-3 rounded-full border border-[#cd7f32]/30 bg-[#cd7f32]/20 hover:bg-[#cd7f32]/30 cursor-pointer transition-all"
+                    animate={{ y: [0, 10, 0] }}
+                    transition={{
+                      y: { repeat: Infinity, duration: 1.5, ease: "easeInOut" },
+                    }}
+                  >
+                    <ChevronDown size={24} className="text-[#cd7f32]" />
+                  </motion.button>
+                </motion.div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          )}
 
-      {/* Seção final com o link - penúltima "snap section" */}
-      <div
-        ref={(el) => (sectionsRef.current[totalSections - 2] = el)}
-        data-index={totalSections - 2}
-        className="h-dvh flex flex-col items-center justify-center p-4 section"
-        style={{
-          scrollSnapAlign: "start",
-          backgroundColor: unlocked ? "#cd7f3210" : "transparent",
-        }}
-      >
-        <div className="max-w-md mx-auto text-center">
-          {/* Barra de progresso sempre completa na página de link */}
-          <div className="w-full max-w-xs mx-auto mb-4 bg-[#3b1e0e] rounded-full h-3 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ease-out ${
-                unlocked ? "progress-complete" : ""
-              }`}
-              style={{
-                width: unlocked ? "100%" : "0%",
-                backgroundColor: unlocked ? "#4ade80" : getCurrentLevelColor(),
-              }}
-            ></div>
-          </div>
-
-          <div
-            className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 ${
-              unlocked
-                ? "border-4 border-green-500/40 completed-pulse"
-                : "border-4 border-[#cd7f32]/40"
-            }`}
-            style={{ backgroundColor: unlocked ? "#00800020" : "#cd7f3220" }}
-          >
-            {unlocked ? (
-              <Gift size={32} className="text-green-400" />
-            ) : (
-              <Lock size={32} className="text-[#cd7f32]" />
-            )}
-          </div>
-
-          <h2
-            className="text-2xl font-medium mb-6"
-            style={{ color: unlocked ? "#4ade80" : "#cd7f32" }}
-          >
-            {unlocked ? "Link Desbloqueado!" : "Quase lá..."}
-          </h2>
-
-          {unlocked ? (
-            <div className="space-y-6">
-              <p className="text-[#e1d6b9]/80 mb-6">
-                Obrigado pela sua paciência! Seu link está pronto para acesso.
-              </p>
-              <a
-                href={destinationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#cd7f32] rounded-full text-white font-medium transition-all hover:bg-[#8b5a2b] text-lg shadow-lg hover:shadow-xl"
-              >
-                Acessar link <ExternalLink size={20} />
-              </a>
-              <div className="flex justify-center gap-4 mt-6">
-                <button
-                  onClick={handleCopyLink}
-                  className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-[rgba(255,255,255,0.1)] rounded-full text-[#e1d6b9] text-sm font-medium transition-all hover:bg-[rgba(255,255,255,0.15)]"
-                >
-                  <Copy size={16} className="mr-1" /> Copiar
-                </button>
-                <button
-                  onClick={handleShareLink}
-                  className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-[rgba(255,255,255,0.1)] rounded-full text-[#e1d6b9] text-sm font-medium transition-all hover:bg-[rgba(255,255,255,0.15)]"
-                >
-                  <Share2 size={16} className="mr-1" /> Compartilhar
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <p className="text-[#e1d6b9]/80 mb-6">
-                Complete todas as etapas anteriores para desbloquear seu link.
-              </p>
-              <div className="flex flex-col gap-3 text-sm mb-6 max-w-xs mx-auto">
-                <div
-                  className={`flex items-center ${
-                    sectionCompleted.slice(1, totalSections - 2).every(Boolean)
-                      ? "text-green-400"
-                      : "text-[#e1d6b9]/60"
-                  }`}
-                >
+          {/* SEÇÕES DE NÍVEL (GERADAS DINAMICAMENTE) */}
+          {currentSection >= 1 && currentSection <= totalSections - 3 && (
+            <div className="h-dvh w-full flex flex-col items-center justify-center p-4 section">
+              <div className="w-full max-w-xs mx-auto flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
                   <div
-                    className={`w-5 h-5 rounded-full mr-2 flex items-center justify-center text-xs ${
-                      sectionCompleted
-                        .slice(1, totalSections - 2)
-                        .every(Boolean)
-                        ? "bg-green-400/20 text-green-400"
-                        : "bg-[#e1d6b9]/10"
-                    }`}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center 
+                      ${
+                        sectionCompleted[currentSection]
+                          ? "bg-green-400/20 completed-pulse"
+                          : "bg-[#cd7f32]/20"
+                      }`}
                   >
-                    {sectionCompleted.slice(1, totalSections - 2).every(Boolean)
-                      ? "✓"
-                      : "1"}
+                    <Award
+                      size={14}
+                      className={
+                        sectionCompleted[currentSection]
+                          ? "text-green-400"
+                          : "text-[#cd7f32]"
+                      }
+                    />
                   </div>
-                  <div className="flex-1">Passar por todas as etapas</div>
+                  <span className="text-xs">
+                    Nível {currentSection}/{totalLevels}
+                  </span>
                 </div>
+
                 <div
-                  className={`flex items-center ${
-                    currentSection >= totalSections - 2
-                      ? "text-green-400"
-                      : "text-[#e1d6b9]/60"
-                  }`}
-                >
-                  <div
-                    className={`w-5 h-5 rounded-full mr-2 flex items-center justify-center text-xs ${
-                      currentSection >= totalSections - 2
-                        ? "bg-green-400/20 text-green-400"
-                        : "bg-[#e1d6b9]/10"
+                  className={`flex items-center bg-[#3b1e0e] px-3 py-1 rounded-full 
+                    ${
+                      sectionCompleted[currentSection]
+                        ? "border border-green-400/30"
+                        : ""
                     }`}
-                  >
-                    {currentSection >= totalSections - 2 ? "✓" : "2"}
-                  </div>
-                  <div className="flex-1">Chegar à etapa final</div>
+                >
+                  {sectionCompleted[currentSection] ? (
+                    <>
+                      <Check size={14} className="text-green-400 mr-1" />
+                      <span className="text-xs text-green-400">Completo</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock size={14} className="text-[#cd7f32] mr-1" />
+                      <span className="text-xs font-mono">
+                        {currentSectionTime}s
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
-              <button
-                disabled
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full text-[#e1d6b9]/50 font-medium cursor-not-allowed"
+
+              {/* Número de nível - elemento de gamificação */}
+              <motion.div
+                className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-4
+                  ${
+                    sectionCompleted[currentSection]
+                      ? "border-2 border-green-400 completed-pulse"
+                      : "border-2 subtle-pulse"
+                  }`}
                 style={{
-                  backgroundColor: "#3b1e0e",
-                  borderColor: "#8b5a2b30",
-                  borderWidth: "1px",
+                  backgroundColor: sectionCompleted[currentSection]
+                    ? "#00800020"
+                    : `${getCurrentLevelColor()}20`,
+                  borderColor: sectionCompleted[currentSection]
+                    ? "#4ade80"
+                    : getCurrentLevelColor(),
                 }}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3 }}
               >
-                <Lock size={16} /> Link bloqueado
-              </button>
-            </div>
-          )}
+                <span
+                  className={`text-base font-bold ${
+                    sectionCompleted[currentSection] ? "text-green-400" : ""
+                  }`}
+                >
+                  {currentSection}
+                </span>
+              </motion.div>
 
-          {/* Seta para o rodapé */}
-          <div className="mt-8 flex flex-col items-center">
-            <p className="text-xs text-[#e1d6b9]/40 mb-2">Mais informações</p>
-            <button
-              onClick={() => {
-                const footerSection = sectionsRef.current[totalSections - 1];
-                if (footerSection) {
-                  footerSection.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  });
-                }
-              }}
-              className="flex items-center justify-center bg-[#cd7f32]/10 hover:bg-[#cd7f32]/20 p-2 rounded-full border border-[#cd7f32]/20 transition-all cursor-pointer"
-            >
-              <ChevronDown size={16} className="text-[#cd7f32]" />
-            </button>
-          </div>
-        </div>
-      </div>
+              <div className="max-w-lg mx-auto w-full text-center">
+                <motion.p
+                  className="text-center text-[#e1d6b9]/80 italic mb-4 text-lg"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                >
+                  {stepPhrases[currentSection % stepPhrases.length]}
+                </motion.p>
 
-      {/* Rodapé como uma seção snap independente */}
-      <div
-        ref={(el) => (sectionsRef.current[totalSections - 1] = el)}
-        data-index={totalSections - 1}
-        className="h-dvh flex flex-col items-center justify-center p-4 section bg-[#21130a]"
-        style={{ scrollSnapAlign: "start" }}
-      >
-        <div className="max-w-md mx-auto text-center">
-          <div className="mb-4">
-            <div className="inline-flex items-center justify-center">
-              <img
-                src="https://i.ibb.co/KpF7CjKN/Chat-GPT-Image-10-de-mai-de-2025-00-22-43.png"
-                alt="Chocolate bar"
-                className="h-10 w-10 mr-2"
-              />
-              <span className="text-xl font-bold ml-2">chc.lat</span>
-            </div>
-            <p className="mt-2 text-sm text-[#e1d6b9]/60">
-              Encurtador com monetização
-            </p>
-          </div>
+                {/* CORREÇÃO: Container para anúncio diretamente embutido na seção atual */}
+                <motion.div
+                  className="my-4 ad-container flex justify-center items-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <div
+                    id={`awn-z9952262-${currentSection + 1}`}
+                    className="w-full min-h-[250px] max-w-[320px] mx-auto"
+                  ></div>
+                </motion.div>
 
-          {/* Estatísticas simplificadas */}
-          <div className="bg-[#3b1e0e] rounded-lg p-4 mb-4 border border-[#cd7f32]/20">
-            <h3 className="text-[#cd7f32] text-lg mb-2">Estatísticas</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="text-center">
-                <div className="text-2xl font-bold">{metrics.timeSpent}</div>
-                <div className="text-xs text-[#e1d6b9]/60">Segundos</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">
-                  {metrics.viewedSections}
+                {/* Barra de progresso para a seção atual */}
+                <div className="w-full max-w-xs mx-auto mb-4 bg-[#3b1e0e] rounded-full h-3 overflow-hidden">
+                  <motion.div
+                    className={`h-full rounded-full transition-all duration-300 ease-out 
+                      ${
+                        sectionCompleted[currentSection] ? "bg-green-400" : ""
+                      }`}
+                    initial={{
+                      width: sectionCompleted[currentSection] ? "100%" : "0%",
+                    }}
+                    animate={{
+                      width: sectionCompleted[currentSection]
+                        ? "100%"
+                        : `${
+                            100 - (currentSectionTime / SECTION_TIMER) * 100
+                          }%`,
+                    }}
+                    transition={{ duration: 0.5 }}
+                    style={{
+                      backgroundColor: sectionCompleted[currentSection]
+                        ? "#4ade80"
+                        : getCurrentLevelColor(),
+                    }}
+                  />
                 </div>
-                <div className="text-xs text-[#e1d6b9]/60">Etapas</div>
+
+                <div className="flex justify-center gap-3 w-full">
+                  {/* Botão para voltar */}
+                  <motion.button
+                    onClick={prevSection}
+                    className="mt-4 flex items-center justify-center p-3 rounded-full border border-[#e1d6b9]/20 bg-[#e1d6b9]/10 hover:bg-[#e1d6b9]/20 cursor-pointer transition-all"
+                    initial={{ x: -10, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.3 }}
+                  >
+                    <ChevronUp size={20} className="text-[#e1d6b9]/70" />
+                  </motion.button>
+
+                  {/* Botão para avançar */}
+                  <motion.button
+                    onClick={nextSection}
+                    disabled={!sectionCompleted[currentSection]}
+                    className={`mt-4 flex items-center justify-center p-3 rounded-full border transition-all ${
+                      sectionCompleted[currentSection]
+                        ? "bg-[#cd7f32]/20 hover:bg-[#cd7f32]/30 border-[#cd7f32]/30 cursor-pointer"
+                        : "bg-[#3b1e0e]/50 border-[#3b1e0e]/30 cursor-not-allowed"
+                    }`}
+                    initial={{ x: 10, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.3, duration: 0.3 }}
+                  >
+                    <ChevronDown
+                      size={20}
+                      className={
+                        sectionCompleted[currentSection]
+                          ? "text-[#cd7f32]"
+                          : "text-[#e1d6b9]/30"
+                      }
+                    />
+                  </motion.button>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Links do footer - simplificados */}
-          <div className="flex justify-center gap-4 text-xs text-[#e1d6b9]/60">
-            <a href="#" className="hover:text-[#cd7f32]">
-              Termos
-            </a>
-            <span>|</span>
-            <a href="#" className="hover:text-[#cd7f32]">
-              Privacidade
-            </a>
-            <span>|</span>
-            <a href="#" className="hover:text-[#cd7f32]">
-              Contato
-            </a>
-          </div>
-
-          <p className="mt-4 text-xs text-[#e1d6b9]/40">© 2025 CHC.LAT</p>
-
-          {/* Botão para voltar para o topo */}
-          {unlocked && (
-            <button
-              onClick={() => {
-                // Ir para a seção de link, melhor que scroll to top
-                const linkSection = sectionsRef.current[totalSections - 2];
-                if (linkSection) {
-                  linkSection.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  });
-                }
-              }}
-              className="mt-6 inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#cd7f32]/20 hover:bg-[#cd7f32]/30 rounded-full text-[#e1d6b9] text-xs font-medium transition-all"
-            >
-              <span>Voltar ao link</span>
-              <ChevronDown size={14} className="transform rotate-180" />
-            </button>
           )}
-        </div>
-      </div>
+
+          {/* SEÇÃO FINAL COM O LINK */}
+          {currentSection === totalSections - 2 && (
+            <div className="h-dvh w-full flex flex-col items-center justify-center p-4 section">
+              <div className="max-w-md mx-auto text-center">
+                {/* Barra de progresso */}
+                <div className="w-full max-w-xs mx-auto mb-4 bg-[#3b1e0e] rounded-full h-3 overflow-hidden">
+                  <motion.div
+                    className={`h-full rounded-full ${
+                      unlocked ? "progress-complete" : ""
+                    }`}
+                    initial={{ width: "0%" }}
+                    animate={{
+                      width: unlocked ? "100%" : "0%",
+                      backgroundColor: unlocked
+                        ? "#4ade80"
+                        : getCurrentLevelColor(),
+                    }}
+                    transition={{ duration: 0.5 }}
+                  />
+                </div>
+
+                <motion.div
+                  className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 ${
+                    unlocked
+                      ? "border-4 border-green-500/40 completed-pulse"
+                      : "border-4 border-[#cd7f32]/40"
+                  }`}
+                  style={{
+                    backgroundColor: unlocked ? "#00800020" : "#cd7f3220",
+                  }}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {unlocked ? (
+                    <Gift size={32} className="text-green-400" />
+                  ) : (
+                    <Lock size={32} className="text-[#cd7f32]" />
+                  )}
+                </motion.div>
+
+                <motion.h2
+                  className="text-2xl font-medium mb-6"
+                  style={{ color: unlocked ? "#4ade80" : "#cd7f32" }}
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                >
+                  {unlocked ? "Link Desbloqueado!" : "Quase lá..."}
+                </motion.h2>
+
+                {unlocked ? (
+                  <motion.div
+                    className="space-y-6"
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.3 }}
+                  >
+                    <p className="text-[#e1d6b9]/80 mb-6">
+                      Obrigado pela sua paciência! Seu link está pronto para
+                      acesso.
+                    </p>
+                    <motion.a
+                      href={destinationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#cd7f32] rounded-full text-white font-medium transition-all hover:bg-[#8b5a2b] text-lg shadow-lg hover:shadow-xl"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Acessar link <ExternalLink size={20} />
+                    </motion.a>
+                    <div className="flex justify-center gap-4 mt-6">
+                      <motion.button
+                        onClick={handleCopyLink}
+                        className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-[rgba(255,255,255,0.1)] rounded-full text-[#e1d6b9] text-sm font-medium transition-all hover:bg-[rgba(255,255,255,0.15)]"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Copy size={16} className="mr-1" /> Copiar
+                      </motion.button>
+                      <motion.button
+                        onClick={handleShareLink}
+                        className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-[rgba(255,255,255,0.1)] rounded-full text-[#e1d6b9] text-sm font-medium transition-all hover:bg-[rgba(255,255,255,0.15)]"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Share2 size={16} className="mr-1" /> Compartilhar
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.3 }}
+                  >
+                    <p className="text-[#e1d6b9]/80 mb-6">
+                      Complete todas as etapas anteriores para desbloquear seu
+                      link.
+                    </p>
+                    <div className="flex flex-col gap-3 text-sm mb-6 max-w-xs mx-auto">
+                      <div
+                        className={`flex items-center ${
+                          sectionCompleted
+                            .slice(1, totalSections - 2)
+                            .every(Boolean)
+                            ? "text-green-400"
+                            : "text-[#e1d6b9]/60"
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full mr-2 flex items-center justify-center text-xs ${
+                            sectionCompleted
+                              .slice(1, totalSections - 2)
+                              .every(Boolean)
+                              ? "bg-green-400/20 text-green-400"
+                              : "bg-[#e1d6b9]/10"
+                          }`}
+                        >
+                          {sectionCompleted
+                            .slice(1, totalSections - 2)
+                            .every(Boolean)
+                            ? "✓"
+                            : "1"}
+                        </div>
+                        <div className="flex-1">Passar por todas as etapas</div>
+                      </div>
+                      <div
+                        className={`flex items-center ${
+                          currentSection >= totalSections - 2
+                            ? "text-green-400"
+                            : "text-[#e1d6b9]/60"
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full mr-2 flex items-center justify-center text-xs ${
+                            currentSection >= totalSections - 2
+                              ? "bg-green-400/20 text-green-400"
+                              : "bg-[#e1d6b9]/10"
+                          }`}
+                        >
+                          {currentSection >= totalSections - 2 ? "✓" : "2"}
+                        </div>
+                        <div className="flex-1">Chegar à etapa final</div>
+                      </div>
+                    </div>
+                    <button
+                      disabled
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full text-[#e1d6b9]/50 font-medium cursor-not-allowed"
+                      style={{
+                        backgroundColor: "#3b1e0e",
+                        borderColor: "#8b5a2b30",
+                        borderWidth: "1px",
+                      }}
+                    >
+                      <Lock size={16} /> Link bloqueado
+                    </button>
+                  </motion.div>
+                )}
+
+                {/* Botões de navegação */}
+                <div className="mt-8 flex justify-center gap-3">
+                  {/* Botão para voltar */}
+                  <motion.button
+                    onClick={prevSection}
+                    className="flex items-center justify-center bg-[#e1d6b9]/10 hover:bg-[#e1d6b9]/20 p-2 rounded-full border border-[#e1d6b9]/20 transition-all cursor-pointer"
+                    initial={{ x: -10, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.3, duration: 0.3 }}
+                  >
+                    <ChevronUp size={16} className="text-[#e1d6b9]" />
+                  </motion.button>
+
+                  {/* Seta para o rodapé */}
+                  <motion.button
+                    onClick={nextSection}
+                    className="flex items-center justify-center bg-[#cd7f32]/10 hover:bg-[#cd7f32]/20 p-2 rounded-full border border-[#cd7f32]/20 transition-all cursor-pointer"
+                    initial={{ x: 10, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.3, duration: 0.3 }}
+                  >
+                    <ChevronDown size={16} className="text-[#cd7f32]" />
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* RODAPÉ */}
+          {currentSection === totalSections - 1 && (
+            <div className="h-dvh w-full flex flex-col items-center justify-center p-4 section bg-[#21130a]">
+              <div className="max-w-md mx-auto text-center">
+                <motion.div
+                  className="mb-4"
+                  initial={{ y: -20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="inline-flex items-center justify-center">
+                    <img
+                      src="https://i.ibb.co/KpF7CjKN/Chat-GPT-Image-10-de-mai-de-2025-00-22-43.png"
+                      alt="Chocolate bar"
+                      className="h-10 w-10 mr-2"
+                    />
+                    <span className="text-xl font-bold ml-2">chc.lat</span>
+                  </div>
+                  <p className="mt-2 text-sm text-[#e1d6b9]/60">
+                    Encurtador com monetização
+                  </p>
+                </motion.div>
+
+                {/* Estatísticas simplificadas */}
+                <motion.div
+                  className="bg-[#3b1e0e] rounded-lg p-4 mb-4 border border-[#cd7f32]/20"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                >
+                  <h3 className="text-[#cd7f32] text-lg mb-2">Estatísticas</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">
+                        {metrics.timeSpent}
+                      </div>
+                      <div className="text-xs text-[#e1d6b9]/60">Segundos</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">
+                        {metrics.viewedSections}
+                      </div>
+                      <div className="text-xs text-[#e1d6b9]/60">Etapas</div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Links do footer - simplificados */}
+                <motion.div
+                  className="flex justify-center gap-4 text-xs text-[#e1d6b9]/60"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <a href="#" className="hover:text-[#cd7f32]">
+                    Termos
+                  </a>
+                  <span>|</span>
+                  <a href="#" className="hover:text-[#cd7f32]">
+                    Privacidade
+                  </a>
+                  <span>|</span>
+                  <a href="#" className="hover:text-[#cd7f32]">
+                    Contato
+                  </a>
+                </motion.div>
+
+                <motion.p
+                  className="mt-4 text-xs text-[#e1d6b9]/40"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.3 }}
+                >
+                  © 2025 CHC.LAT
+                </motion.p>
+
+                {/* Botão para voltar */}
+                {unlocked && (
+                  <motion.button
+                    onClick={() => navigateTo(totalSections - 2)}
+                    className="mt-6 inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#cd7f32]/20 hover:bg-[#cd7f32]/30 rounded-full text-[#e1d6b9] text-xs font-medium transition-all"
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.4, duration: 0.3 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <span>Voltar ao link</span>
+                    <ChevronUp size={14} />
+                  </motion.button>
+                )}
+
+                {/* Botão para voltar à seção anterior */}
+                <motion.button
+                  onClick={prevSection}
+                  className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#e1d6b9]/10 hover:bg-[#e1d6b9]/20 rounded-full text-[#e1d6b9] text-xs font-medium transition-all"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5, duration: 0.3 }}
+                >
+                  <ChevronUp size={14} className="text-[#e1d6b9]" />
+                  <span>Voltar</span>
+                </motion.button>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
