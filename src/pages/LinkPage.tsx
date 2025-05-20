@@ -619,7 +619,7 @@ export default function ChocolateAdPage() {
       {Array.from({ length: totalSections - 3 }).map((_, index) => {
         const sectionIndex = index + 1; // começamos do 1 porque já temos a seção 0
         // IDs CORRIGIDOS - cada seção com ID único de 2 a 11
-        const adId = `awn-z9952262-${sectionIndex + 1}`; // +1 porque já usamos o ID 1 no cabeçalho
+        const adId = `awn-z9962294-${sectionIndex + 1}`; // +1 porque já usamos o ID 1 no cabeçalho
 
         return (
           <div
