@@ -12,7 +12,8 @@ export default defineConfig({
         tag: "meta",
         attrs: {
           name: "description",
-          content: "CHC.LAT é um encurtador de links com monetização. Transforme suas URLs em uma fonte de renda.",
+          content:
+            "CHC.LAT é um encurtador de links com monetização. Transforme suas URLs em uma fonte de renda.",
         },
         head: true,
       },
@@ -24,7 +25,7 @@ export default defineConfig({
         },
         head: true,
       },
-      // Script do Adsterra Banner - apenas o necessário
+      // Script do Adsterra Banner para 300x250
       {
         tag: "script",
         attrs: {
@@ -39,6 +40,25 @@ export default defineConfig({
             'params' : {} 
           };
           document.write('<scr' + 'ipt type="text/javascript" src="//www.highperformanceformat.com/1123eee015220ba1dacddd14ea04a988/invoke.js"></scr' + 'ipt>');
+        `,
+        head: false,
+        append: true, // Append to body instead of head
+      },
+      // Script do Adsterra Banner para 320x50
+      {
+        tag: "script",
+        attrs: {
+          type: "text/javascript",
+        },
+        children: `
+          var atOptions = { 
+            'key' : '732cb0029d49dc889b19b61d2ccc0786', 
+            'format' : 'iframe', 
+            'height' : 50, 
+            'width' : 320, 
+            'params' : {} 
+          };
+          document.write('<scr' + 'ipt type="text/javascript" src="//www.highperformanceformat.com/732cb0029d49dc889b19b61d2ccc0786/invoke.js"></scr' + 'ipt>');
         `,
         head: false,
         append: true, // Append to body instead of head

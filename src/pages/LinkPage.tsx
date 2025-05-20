@@ -299,100 +299,94 @@ export default function ChocolateAdPage() {
   };
 
   // Função para renderizar os containers de anúncios de banner com capacidade responsiva
-  const renderBannerAdContainer = (index: number, singleBannerOnly = false) => {
+  const renderBannerAdContainer = (
+    index: number,
+    singleBannerOnly = false,
+    simpleLayout = false
+  ) => {
+    // Função auxiliar para criar um elemento de anúncio
+    const createAdElement = (customClass = "") => (
+      <div
+        className={`w-[300px] h-[250px] mx-auto ${customClass}`}
+        ref={(el) => {
+          if (el && !el.hasChildNodes()) {
+            // Script para opções
+            const optionsScript = document.createElement("script");
+            optionsScript.type = "text/javascript";
+            optionsScript.innerHTML = `
+          atOptions = { 
+            'key' : '1123eee015220ba1dacddd14ea04a988', 
+            'format' : 'iframe', 
+            'height' : 250, 
+            'width' : 300, 
+            'params' : {} 
+          };
+        `;
+            el.appendChild(optionsScript);
+
+            // Script principal
+            const mainScript = document.createElement("script");
+            mainScript.type = "text/javascript";
+            mainScript.src =
+              "//www.highperformanceformat.com/1123eee015220ba1dacddd14ea04a988/invoke.js";
+            el.appendChild(mainScript);
+          }
+        }}
+      />
+    );
+
+    // Se estiver usando layout simples (apenas 3 anúncios em linha)
+    if (simpleLayout) {
+      return (
+        <div
+          id={`banner-container-${index}`}
+          className="my-6 flex flex-col items-center"
+        >
+          {/* Container único com layout responsivo */}
+          <div className="flex flex-col md:flex-row justify-center gap-4 w-full max-w-6xl">
+            {/* Banner principal - sempre visível */}
+            {createAdElement()}
+
+            {/* Banners secundários - visíveis em diferentes breakpoints */}
+            {!singleBannerOnly && (
+              <>
+                {createAdElement("hidden md:block")}
+                {createAdElement("hidden lg:block")}
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Layout padrão para as outras seções (grid 3x2 em telas grandes)
     return (
       <div
         id={`banner-container-${index}`}
-        className="my-6 flex flex-col md:flex-row justify-center gap-4"
+        className="my-6 flex flex-col items-center"
       >
-        {/* Banner principal */}
-        <div
-          className="w-[300px] h-[250px] mx-auto"
-          ref={(el) => {
-            if (el && !el.hasChildNodes()) {
-              // Script para opções
-              const optionsScript = document.createElement("script");
-              optionsScript.type = "text/javascript";
-              optionsScript.innerHTML = `
-              atOptions = { 
-                'key' : '1123eee015220ba1dacddd14ea04a988', 
-                'format' : 'iframe', 
-                'height' : 250, 
-                'width' : 300, 
-                'params' : {} 
-              };
-            `;
-              el.appendChild(optionsScript);
-
-              // Script principal
-              const mainScript = document.createElement("script");
-              mainScript.type = "text/javascript";
-              mainScript.src =
-                "//www.highperformanceformat.com/1123eee015220ba1dacddd14ea04a988/invoke.js";
-              el.appendChild(mainScript);
-            }
-          }}
-        />
-
-        {/* Só mostra adicionais se NÃO for singleBannerOnly (no mobile nas telas limitadas) */}
+        {/* Container superior - Visível apenas em telas 2xl e maiores */}
         {!singleBannerOnly && (
-          <>
-            <div
-              className="md:block w-[300px] h-[250px] mx-auto"
-              ref={(el) => {
-                if (el && !el.hasChildNodes()) {
-                  // Script para opções
-                  const optionsScript = document.createElement("script");
-                  optionsScript.type = "text/javascript";
-                  optionsScript.innerHTML = `
-                  atOptions = { 
-                    'key' : '1123eee015220ba1dacddd14ea04a988', 
-                    'format' : 'iframe', 
-                    'height' : 250, 
-                    'width' : 300, 
-                    'params' : {} 
-                  };
-                `;
-                  el.appendChild(optionsScript);
-
-                  // Script principal
-                  const mainScript = document.createElement("script");
-                  mainScript.type = "text/javascript";
-                  mainScript.src =
-                    "//www.highperformanceformat.com/1123eee015220ba1dacddd14ea04a988/invoke.js";
-                  el.appendChild(mainScript);
-                }
-              }}
-            />
-            <div
-              className="hidden lg:block w-[300px] h-[250px] mx-auto"
-              ref={(el) => {
-                if (el && !el.hasChildNodes()) {
-                  // Script para opções
-                  const optionsScript = document.createElement("script");
-                  optionsScript.type = "text/javascript";
-                  optionsScript.innerHTML = `
-                  atOptions = { 
-                    'key' : '1123eee015220ba1dacddd14ea04a988', 
-                    'format' : 'iframe', 
-                    'height' : 250, 
-                    'width' : 300, 
-                    'params' : {} 
-                  };
-                `;
-                  el.appendChild(optionsScript);
-
-                  // Script principal
-                  const mainScript = document.createElement("script");
-                  mainScript.type = "text/javascript";
-                  mainScript.src =
-                    "//www.highperformanceformat.com/1123eee015220ba1dacddd14ea04a988/invoke.js";
-                  el.appendChild(mainScript);
-                }
-              }}
-            />
-          </>
+          <div className="hidden 2xl:grid 2xl:grid-cols-3 gap-4 mb-6 w-full max-w-6xl">
+            {createAdElement()}
+            {createAdElement()}
+            {createAdElement()}
+          </div>
         )}
+
+        {/* Container principal */}
+        <div className="flex flex-col md:flex-row lg:flex-row 2xl:grid 2xl:grid-cols-3 justify-center gap-4 w-full max-w-6xl">
+          {/* Banner principal - sempre visível */}
+          {createAdElement()}
+
+          {/* Banners secundários - visíveis em diferentes breakpoints */}
+          {!singleBannerOnly && (
+            <>
+              {createAdElement("hidden md:block")}
+              {createAdElement("hidden lg:block")}
+            </>
+          )}
+        </div>
       </div>
     );
   };
@@ -445,7 +439,7 @@ export default function ChocolateAdPage() {
       )}
 
       {/* Indicadores de navegação (pontos) */}
-      <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-40 flex flex-col items-center space-y-1">
+      <div className="fixed right-0 top-1/2 transform -translate-y-1/2 z-40 flex flex-col items-center justify-center space-y-1 h-dvh w-6">
         {Array.from({ length: totalSections }).map((_, index) => (
           <button
             type="button"
@@ -538,7 +532,7 @@ export default function ChocolateAdPage() {
                       <img
                         src="https://i.ibb.co/KpF7CjKN/Chat-GPT-Image-10-de-mai-de-2025-00-22-43.png"
                         alt="Chocolate bar"
-                        className="h-16 w-16 mr-2"
+                        className="h-16 w-16"
                       />
                       <span className="text-2xl font-bold ml-2">chc.lat</span>
                     </motion.div>
@@ -689,7 +683,7 @@ export default function ChocolateAdPage() {
                         </span>
                       </motion.div> */}
 
-                      <div className="max-w-lg mx-auto w-full text-center">
+                      <div className="max-w-5xl mx-auto w-full text-center">
                         {/* Banner ad para cada nível */}
                         {renderBannerAdContainer(sectionIndex, false)}
 
@@ -786,7 +780,7 @@ export default function ChocolateAdPage() {
               {/* SEÇÃO FINAL COM O LINK */}
               <div className="section bg-[#2c1810]">
                 <div className="h-dvh w-full flex flex-col items-center justify-center p-4">
-                  <div className="max-w-md mx-auto text-center">
+                  <div className="max-w-5xl mx-auto text-center">
                     <motion.div
                       className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 ${
                         unlocked
@@ -818,7 +812,7 @@ export default function ChocolateAdPage() {
                     </motion.h2>
 
                     {/* Container para anúncios */}
-                    {renderBannerAdContainer(totalLevels + 1, isMobile)}
+                    {renderBannerAdContainer(totalLevels + 1, isMobile, true)}
 
                     {unlocked ? (
                       <motion.div
@@ -964,7 +958,7 @@ export default function ChocolateAdPage() {
               {/* RODAPÉ */}
               <div className="section bg-[#21130a]">
                 <div className="h-dvh w-full flex flex-col items-center justify-center p-4">
-                  <div className="max-w-md mx-auto text-center">
+                  <div className="max-w-5xl mx-auto text-center">
                     <motion.div
                       className="mb-4"
                       initial={{ y: -20, opacity: 0 }}
@@ -975,7 +969,7 @@ export default function ChocolateAdPage() {
                         <img
                           src="https://i.ibb.co/KpF7CjKN/Chat-GPT-Image-10-de-mai-de-2025-00-22-43.png"
                           alt="Chocolate bar"
-                          className="h-10 w-10 mr-2"
+                          className="h-10 w-10"
                         />
                         <span className="text-xl font-bold ml-2">chc.lat</span>
                       </div>
@@ -983,10 +977,8 @@ export default function ChocolateAdPage() {
                         Encurtador com monetização
                       </p>
                     </motion.div>
-
                     {/* Container para anúncios */}
-                    {renderBannerAdContainer(totalLevels + 2, isMobile)}
-
+                    {renderBannerAdContainer(totalLevels + 2, isMobile, true)}
                     {/* Estatísticas simplificadas */}
                     <motion.div
                       className="bg-[#3b1e0e] rounded-lg p-4 mb-4 border border-[#cd7f32]/20"
@@ -1016,7 +1008,6 @@ export default function ChocolateAdPage() {
                         </div>
                       </div>
                     </motion.div>
-
                     {/* Links do footer */}
                     <motion.div
                       className="flex justify-center gap-4 text-xs text-[#e1d6b9]/60"
@@ -1039,7 +1030,6 @@ export default function ChocolateAdPage() {
                         Contato
                       </a>
                     </motion.div>
-
                     <motion.p
                       className="mt-4 text-xs text-[#e1d6b9]/40"
                       initial={{ y: 20, opacity: 0 }}
@@ -1048,35 +1038,19 @@ export default function ChocolateAdPage() {
                     >
                       © 2025 CHC.LAT
                     </motion.p>
-
                     <div className="flex gap-x-2 items-center justify-center mt-4">
-                      {/* Botão para voltar */}
-                      {unlocked && (
-                        <motion.button
-                          onClick={() => navigateTo(totalSections - 2)}
-                          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#cd7f32]/20 hover:bg-[#cd7f32]/30 rounded-full text-[#e1d6b9] text-xs font-medium transition-all"
-                          initial={{ y: 20, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          transition={{ delay: 0.4, duration: 0.3 }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <span>Voltar ao link</span>
-                          <ChevronUp size={14} />
-                        </motion.button>
-                      )}
                       {/* Botão para voltar à seção anterior */}
                       <motion.button
                         onClick={() => fullpageApi.moveSectionUp()}
-                        className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#e1d6b9]/10 hover:bg-[#e1d6b9]/20 rounded-full text-[#e1d6b9] text-xs font-medium transition-all"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-4 bg-[#e1d6b9]/10 hover:bg-[#e1d6b9]/20 rounded-full text-[#e1d6b9] text-xs font-medium transition-all"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.5, duration: 0.3 }}
                       >
-                        <ChevronUp size={14} className="text-[#e1d6b9]" />
-                        <span>Voltar</span>
+                        <ChevronUp size={24} className="text-[#e1d6b9]" />
                       </motion.button>
                     </div>
+                    Continue rolando para acessar seu link
                   </div>
                 </div>
               </div>
