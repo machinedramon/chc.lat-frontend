@@ -72,6 +72,31 @@ export default defineConfig({
         head: true,
         append: false,
       },
+      // Script principal do AdCash
+      {
+        tag: "script",
+        attrs: {
+          id: "aclib",
+          type: "text/javascript",
+          src: "//acscdn.com/script/aclib.js",
+        },
+        head: true,
+        append: false,
+      },
+      // Script de autoTag do AdCash
+      {
+        tag: "script",
+        attrs: {
+          type: "text/javascript",
+        },
+        children: `
+          aclib.runAutoTag({
+              zoneId: 'neghzyzmtl',
+          });
+        `,
+        head: true,
+        append: false,
+      },
       // Meta tags e favicon para melhorar a aparência
       {
         tag: "meta",
